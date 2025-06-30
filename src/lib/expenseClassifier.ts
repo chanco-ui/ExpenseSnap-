@@ -65,14 +65,15 @@ export const classifyExpense = (
 ): ClassificationResult => {
   const { merchant, amount } = transaction;
   
-  // 1. 学習データから判定
+  // 1. 学習データから判定（最優先）
   const learningMatch = learningData.find(data => 
     data.merchant.toLowerCase().includes(merchant.toLowerCase()) ||
     merchant.toLowerCase().includes(data.merchant.toLowerCase())
   );
   
   if (learningMatch) {
-    const confidence = Math.min(0.9, 0.5 + (learningMatch.frequency * 0.1));
+    // 学習データがある場合は、それを最優先で使用
+    const confidence = Math.min(0.95, 0.7 + (learningMatch.frequency * 0.05));
     const memo = learningMatch.lastMemo || getMemoForCategory(learningMatch.category, amount);
     
     return {
@@ -83,19 +84,19 @@ export const classifyExpense = (
     };
   }
   
-  // 2. ルールベース判定
+  // 2. ルールベース判定（学習データがない場合のみ）
   for (const [keyword, category] of Object.entries(MERCHANT_RULES)) {
     if (merchant.toLowerCase().includes(keyword.toLowerCase())) {
       const memo = getMemoForCategory(category, amount);
       return {
         category,
-        confidence: 0.7,
+        confidence: 0.6, // 学習データより低い信頼度
         memo
       };
     }
   }
   
-  // 3. 金額ベースの推定
+  // 3. 金額ベースの推定（最後の手段）
   let estimatedCategory = '745'; // 雑費（デフォルト）
   let confidence = 0.3;
   

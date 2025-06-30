@@ -70,10 +70,42 @@ export const getLearningHistory = (merchant: string): string => {
   );
 
   if (data) {
-    return `履歴: ${data.category} (${data.frequency}回) - ${data.lastMemo || 'なし'}`;
+    const categoryName = getCategoryName(data.category);
+    return `履歴: ${data.category} - ${categoryName} (${data.frequency}回) - ${data.lastMemo || 'なし'}`;
   }
 
   return '';
+};
+
+// カテゴリ名を取得する関数（expenseCategoriesからインポート）
+const getCategoryName = (code: string): string => {
+  const categories = {
+    '350': '役員借入金',
+    '316': '預り金1(源泉)',
+    '317': '預り金2(市県民税)',
+    '716': '法定福利費',
+    '717': '福利厚生費',
+    '718': '広告宣伝費',
+    '722': '旅費交通費',
+    '727': '交際費',
+    '737': '会議費',
+    '723': '燃料費',
+    '724': '通信費',
+    '725': '水道光熱費',
+    '726': '租税公課',
+    '728': '消耗品費',
+    '729': '事務用品費',
+    '738': 'リース料',
+    '732': '修繕費',
+    '733': '保険料',
+    '734': '支払手数料',
+    '739': '諸会費',
+    '741': '新聞図書費',
+    '743': '報酬手当',
+    '744': '地代家賃',
+    '745': '雑費'
+  };
+  return categories[code as keyof typeof categories] || '未分類';
 };
 
 // 備考欄の学習データを取得
