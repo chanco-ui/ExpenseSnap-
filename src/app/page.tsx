@@ -58,14 +58,15 @@ export default function Home() {
       if (trans.id === id) {
         const memo = getMemoForCategory(category, trans.amount);
         
-        // 学習データを更新
-        const updatedLearningData = addLearningData(trans.merchant, category, memo);
+        // 学習データを更新（現在の備考も含める）
+        const currentMemo = trans.memo || memo;
+        const updatedLearningData = addLearningData(trans.merchant, category, currentMemo);
         setLearningData(updatedLearningData);
         
         return {
           ...trans,
           category,
-          memo,
+          memo: currentMemo,
           confidence: 1.0,
           updatedAt: new Date()
         };
@@ -87,6 +88,15 @@ export default function Home() {
     }));
   };
 
+  const handleMemoSave = (id: string, memo: string) => {
+    const transaction = transactions.find(t => t.id === id);
+    if (transaction && transaction.category) {
+      // 学習データを更新（備考欄の変更も含む）
+      const updatedLearningData = addLearningData(transaction.merchant, transaction.category, memo);
+      setLearningData(updatedLearningData);
+    }
+  };
+
   const handleRegenerateMemo = (id: string) => {
     setTransactions(prev => prev.map(trans => {
       if (trans.id === id && trans.category) {
@@ -106,14 +116,15 @@ export default function Home() {
       if (selectedItems.has(trans.id)) {
         const memo = getMemoForCategory(category, trans.amount);
         
-        // 学習データを更新
-        const updatedLearningData = addLearningData(trans.merchant, category, memo);
+        // 学習データを更新（現在の備考も含める）
+        const currentMemo = trans.memo || memo;
+        const updatedLearningData = addLearningData(trans.merchant, category, currentMemo);
         setLearningData(updatedLearningData);
         
         return {
           ...trans,
           category,
-          memo,
+          memo: currentMemo,
           confidence: 1.0,
           updatedAt: new Date()
         };
@@ -319,6 +330,15 @@ export default function Home() {
                               className="bg-blue-500 text-white px-2 py-1 rounded text-xs"
                             >
                               再生成
+                            </button>
+                            <button
+                              onClick={() => {
+                                handleMemoSave(transaction.id, transaction.memo || '');
+                                setEditingId(null);
+                              }}
+                              className="bg-green-500 text-white px-2 py-1 rounded text-xs"
+                            >
+                              保存
                             </button>
                           </div>
                         ) : (

@@ -74,4 +74,18 @@ export const getLearningHistory = (merchant: string): string => {
   }
 
   return '';
+};
+
+// 備考欄の学習データを取得
+export const getMemoLearningData = (merchant: string): string[] => {
+  const learningData = loadLearningData();
+  const data = learningData.find(
+    item => item.merchant.toLowerCase() === merchant.toLowerCase()
+  );
+
+  if (data && data.lastMemo) {
+    return [data.lastMemo];
+  }
+
+  return [];
 }; 
