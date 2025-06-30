@@ -6,7 +6,6 @@ export interface Transaction {
   category?: string;
   memo?: string;
   confidence: number;
-  isConfirmed: boolean;
   createdAt: Date;
   updatedAt: Date;
 }

@@ -38,7 +38,6 @@ export default function Home() {
           category: classification.category,
           memo: classification.memo,
           confidence: classification.confidence,
-          isConfirmed: false,
           createdAt: new Date(),
           updatedAt: new Date()
         };
