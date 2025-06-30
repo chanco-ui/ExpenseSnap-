@@ -1,0 +1,33 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Transaction {
+  id          String   @id @default(cuid())
+  date        String
+  merchant    String
+  amount      Int
+  category    String?
+  memo        String?
+  confidence  Float    @default(0)
+  isConfirmed Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model LearningData {
+  id        String   @id @default(cuid())
+  merchant  String   @unique
+  category  String
+  frequency Int      @default(1)
+  lastMemo  String?
+  updatedAt DateTime @updatedAt
+} 
