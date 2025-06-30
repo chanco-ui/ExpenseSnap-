@@ -120,4 +120,40 @@ export const getMemoLearningData = (merchant: string): string[] => {
   }
 
   return [];
+};
+
+// 学習データの統計情報を取得
+export const getLearningStats = () => {
+  const learningData = loadLearningData();
+  
+  const stats = {
+    totalMerchants: learningData.length,
+    totalLearningCount: learningData.reduce((sum, data) => sum + data.frequency, 0),
+    mostLearned: learningData.sort((a, b) => b.frequency - a.frequency).slice(0, 5),
+    recentLearning: learningData.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()).slice(0, 5)
+  };
+  
+  return stats;
+};
+
+// 特定の取引先の学習詳細を取得
+export const getMerchantLearningDetail = (merchant: string) => {
+  const learningData = loadLearningData();
+  const data = learningData.find(
+    item => item.merchant.toLowerCase() === merchant.toLowerCase()
+  );
+
+  if (data) {
+    return {
+      merchant: data.merchant,
+      category: data.category,
+      categoryName: getCategoryName(data.category),
+      frequency: data.frequency,
+      lastMemo: data.lastMemo,
+      lastUpdated: data.updatedAt,
+      confidence: Math.min(0.95, 0.7 + (data.frequency * 0.05))
+    };
+  }
+
+  return null;
 }; 

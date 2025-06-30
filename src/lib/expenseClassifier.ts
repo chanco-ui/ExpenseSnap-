@@ -52,6 +52,19 @@ const MERCHANT_RULES: Record<string, string> = {
   '賃貸': '744', // 地代家賃
 };
 
+// 学習データから動的に判定ルールを生成
+const generateLearningRules = (learningData: LearningData[]): Record<string, string> => {
+  const learningRules: Record<string, string> = {};
+  
+  learningData.forEach(data => {
+    if (data.frequency >= 2) { // 2回以上学習されたデータのみ使用
+      learningRules[data.merchant] = data.category;
+    }
+  });
+  
+  return learningRules;
+};
+
 export interface ClassificationResult {
   category: string;
   confidence: number;
@@ -84,7 +97,21 @@ export const classifyExpense = (
     };
   }
   
-  // 2. ルールベース判定（学習データがない場合のみ）
+  // 2. 学習データから生成されたルールで判定
+  const learningRules = generateLearningRules(learningData);
+  for (const [learningMerchant, category] of Object.entries(learningRules)) {
+    if (merchant.toLowerCase().includes(learningMerchant.toLowerCase()) ||
+        learningMerchant.toLowerCase().includes(merchant.toLowerCase())) {
+      const memo = getMemoForCategory(category, amount);
+      return {
+        category,
+        confidence: 0.65, // 学習ルールの信頼度
+        memo
+      };
+    }
+  }
+  
+  // 3. 固定ルールベース判定（学習データがない場合のみ）
   for (const [keyword, category] of Object.entries(MERCHANT_RULES)) {
     if (merchant.toLowerCase().includes(keyword.toLowerCase())) {
       const memo = getMemoForCategory(category, amount);
@@ -96,7 +123,7 @@ export const classifyExpense = (
     }
   }
   
-  // 3. 金額ベースの推定（最後の手段）
+  // 4. 金額ベースの推定（最後の手段）
   let estimatedCategory = '745'; // 雑費（デフォルト）
   let confidence = 0.3;
   
