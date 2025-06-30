@@ -141,13 +141,15 @@ export default function Home() {
   };
 
   const handleExport = () => {
-    const confirmedTransactions = transactions.filter(t => t.isConfirmed);
-    if (confirmedTransactions.length === 0) {
-      alert('確定された取引がありません');
+    // 選択された取引を出力対象とする
+    const selectedTransactions = transactions.filter(t => selectedItems.has(t.id));
+    
+    if (selectedTransactions.length === 0) {
+      alert('出力する取引を選択してください');
       return;
     }
 
-    const csvContent = exportToCSV(confirmedTransactions);
+    const csvContent = exportToCSV(selectedTransactions);
     const filename = `expense_${new Date().toISOString().split('T')[0]}.csv`;
     downloadCSV(csvContent, filename);
   };
@@ -228,7 +230,18 @@ export default function Home() {
                   className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 flex items-center gap-2"
                 >
                   <Download className="w-4 h-4" />
-                  CSV出力
+                  選択出力
+                </button>
+                <button
+                  onClick={() => {
+                    const csvContent = exportToCSV(transactions);
+                    const filename = `expense_all_${new Date().toISOString().split('T')[0]}.csv`;
+                    downloadCSV(csvContent, filename);
+                  }}
+                  className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 flex items-center gap-2"
+                >
+                  <Download className="w-4 h-4" />
+                  全出力
                 </button>
               </div>
             </div>
