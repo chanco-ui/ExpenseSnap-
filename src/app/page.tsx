@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
-import { Upload, Download, CheckCircle, AlertCircle } from 'lucide-react';
-import { Transaction } from '@/types';
+import { useState, useEffect } from 'react';
+import { Upload, Download, CheckCircle, AlertCircle, History } from 'lucide-react';
+import { Transaction, LearningData } from '@/types';
 import { parseCSV, exportToCSV, downloadCSV } from '@/lib/csvProcessor';
 import { classifyExpense } from '@/lib/expenseClassifier';
+import { loadLearningData, addLearningData, getLearningHistory } from '@/lib/learningManager';
 import { EXPENSE_CATEGORIES, getCategoryName, getMemoForCategory } from '@/constants/expenseCategories';
 
 export default function Home() {
@@ -12,6 +13,13 @@ export default function Home() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [learningData, setLearningData] = useState<LearningData[]>([]);
+
+  // 学習データを読み込み
+  useEffect(() => {
+    const data = loadLearningData();
+    setLearningData(data);
+  }, []);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -21,7 +29,7 @@ export default function Home() {
     try {
       const csvTransactions = await parseCSV(file);
       const processedTransactions: Transaction[] = csvTransactions.map((csvTrans, index) => {
-        const classification = classifyExpense(csvTrans);
+        const classification = classifyExpense(csvTrans, learningData);
         return {
           id: `transaction-${index}`,
           date: csvTrans.date,
@@ -49,6 +57,11 @@ export default function Home() {
     setTransactions(prev => prev.map(trans => {
       if (trans.id === id) {
         const memo = getMemoForCategory(category, trans.amount);
+        
+        // 学習データを更新
+        const updatedLearningData = addLearningData(trans.merchant, category, memo);
+        setLearningData(updatedLearningData);
+        
         return {
           ...trans,
           category,
@@ -92,6 +105,11 @@ export default function Home() {
     setTransactions(prev => prev.map(trans => {
       if (selectedItems.has(trans.id)) {
         const memo = getMemoForCategory(category, trans.amount);
+        
+        // 学習データを更新
+        const updatedLearningData = addLearningData(trans.merchant, category, memo);
+        setLearningData(updatedLearningData);
+        
         return {
           ...trans,
           category,
@@ -232,6 +250,7 @@ export default function Home() {
                     <th className="border border-gray-300 px-3 py-2 text-gray-900 font-semibold">経費科目</th>
                     <th className="border border-gray-300 px-3 py-2 text-gray-900 font-semibold">備考</th>
                     <th className="border border-gray-300 px-3 py-2 text-gray-900 font-semibold">信頼度</th>
+                    <th className="border border-gray-300 px-3 py-2 text-gray-900 font-semibold">履歴</th>
                     <th className="border border-gray-300 px-3 py-2 text-gray-900 font-semibold">操作</th>
                   </tr>
                 </thead>
@@ -302,6 +321,16 @@ export default function Home() {
                             {Math.round(transaction.confidence * 100)}%
                           </span>
                         </div>
+                      </td>
+                      <td className="border border-gray-300 px-3 py-2 text-gray-900 text-sm">
+                        {getLearningHistory(transaction.merchant) && (
+                          <div className="flex items-center gap-1 text-blue-600">
+                            <History className="w-3 h-3" />
+                            <span className="text-xs">
+                              {getLearningHistory(transaction.merchant)}
+                            </span>
+                          </div>
+                        )}
                       </td>
                       <td className="border border-gray-300 px-3 py-2 text-center">
                         {editingId === transaction.id ? (
