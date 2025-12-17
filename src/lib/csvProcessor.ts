@@ -51,11 +51,15 @@ const parseCSVContent = (
   Papa.parse(csvContent, {
     header: false,
     skipEmptyLines: true,
-    encoding: 'UTF-8',
-    quoteChar: '"',
-    escapeChar: '"',
     complete: (results: Papa.ParseResult<string[]>) => {
       try {
+        // パースエラーをチェック
+        if (results.errors && results.errors.length > 0) {
+          console.error('PapaParseエラー:', results.errors);
+          reject(new Error('CSVファイルの読み込みに失敗しました'));
+          return;
+        }
+        
         const transactions: CSVTransaction[] = [];
         
         for (const row of results.data) {
@@ -140,10 +144,6 @@ const parseCSVContent = (
         console.error('CSV解析エラー:', error);
         reject(new Error('CSVファイルの解析に失敗しました'));
       }
-    },
-    error: (error) => {
-      console.error('PapaParseエラー:', error);
-      reject(new Error('CSVファイルの読み込みに失敗しました'));
     }
   });
 };
