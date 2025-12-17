@@ -52,36 +52,97 @@ const parseCSVContent = (
     header: false,
     skipEmptyLines: true,
     encoding: 'UTF-8',
+    quoteChar: '"',
+    escapeChar: '"',
     complete: (results: Papa.ParseResult<string[]>) => {
       try {
         const transactions: CSVTransaction[] = [];
         
         for (const row of results.data) {
-          if (row.length >= 3) {
-            const [date, merchant, amountStr] = row;
-            
-            // 日付の形式を統一
-            const formattedDate = formatDate(date);
-            
-            // 金額を数値に変換
-            const amount = parseInt(amountStr.replace(/[^\d]/g, ''), 10);
-            
-            if (formattedDate && merchant && !isNaN(amount)) {
-              transactions.push({
-                date: formattedDate,
-                merchant: merchant.trim(),
-                amount
-              });
+          if (row.length < 2) continue;
+          
+          // ヘッダー行をスキップ（日付が含まれていない行）
+          const firstCell = row[0]?.trim() || '';
+          if (!formatDate(firstCell) && firstCell.length > 0 && !firstCell.match(/^\d{4}\/\d{1,2}\/\d{1,2}$/)) {
+            continue;
+          }
+          
+          // 日付を探す（1列目から）
+          let dateIndex = -1;
+          let formattedDate: string | null = null;
+          
+          for (let i = 0; i < Math.min(3, row.length); i++) {
+            const cell = row[i]?.trim() || '';
+            const date = formatDate(cell);
+            if (date) {
+              dateIndex = i;
+              formattedDate = date;
+              break;
             }
+          }
+          
+          // 日付が見つからない場合はスキップ
+          if (!formattedDate) continue;
+          
+          // 取引先を探す（日付の次の列から）
+          let merchant = '';
+          let merchantIndex = dateIndex + 1;
+          
+          // 取引先が空の場合は次の列を確認
+          while (merchantIndex < row.length && (!row[merchantIndex] || row[merchantIndex].trim() === '')) {
+            merchantIndex++;
+          }
+          
+          if (merchantIndex < row.length) {
+            merchant = row[merchantIndex].trim();
+          }
+          
+          // 取引先が見つからない場合はスキップ
+          if (!merchant) continue;
+          
+          // 金額を探す（複数の列を確認: 3列目、5列目、6列目など）
+          let amount = 0;
+          let amountFound = false;
+          
+          // 金額の可能性がある列を順に確認
+          const amountCandidates = [
+            dateIndex + 2, // 通常の3列目
+            dateIndex + 4, // 5列目
+            dateIndex + 5, // 6列目
+          ];
+          
+          for (const index of amountCandidates) {
+            if (index < row.length && row[index]) {
+              const amountStr = row[index].trim();
+              // 負の値も含めて数値を抽出
+              const extractedAmount = parseInt(amountStr.replace(/[^\d-]/g, ''), 10);
+              
+              if (!isNaN(extractedAmount) && extractedAmount !== 0) {
+                amount = Math.abs(extractedAmount); // 絶対値で保存
+                amountFound = true;
+                break;
+              }
+            }
+          }
+          
+          // 金額が見つかった場合のみ追加
+          if (amountFound && amount > 0) {
+            transactions.push({
+              date: formattedDate,
+              merchant: merchant,
+              amount
+            });
           }
         }
         
         resolve(transactions);
-      } catch {
+      } catch (error) {
+        console.error('CSV解析エラー:', error);
         reject(new Error('CSVファイルの解析に失敗しました'));
       }
     },
-    error: () => {
+    error: (error) => {
+      console.error('PapaParseエラー:', error);
       reject(new Error('CSVファイルの読み込みに失敗しました'));
     }
   });
