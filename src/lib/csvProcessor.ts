@@ -61,6 +61,7 @@ const parseCSVContent = (
         }
         
         const transactions: CSVTransaction[] = [];
+        let lastDate: string | null = null; // 前の行の日付を保持
         
         for (const row of results.data) {
           if (row.length < 2) continue;
@@ -68,6 +69,10 @@ const parseCSVContent = (
           // ヘッダー行をスキップ（日付が含まれていない行）
           const firstCell = row[0]?.trim() || '';
           if (!formatDate(firstCell) && firstCell.length > 0 && !firstCell.match(/^\d{4}\/\d{1,2}\/\d{1,2}$/)) {
+            // カード情報のヘッダー行の可能性があるので、日付をリセット
+            if (firstCell.includes('**') || firstCell.includes('カード')) {
+              lastDate = null;
+            }
             continue;
           }
           
@@ -81,38 +86,77 @@ const parseCSVContent = (
             if (date) {
               dateIndex = i;
               formattedDate = date;
+              lastDate = date; // 日付を更新
               break;
             }
           }
           
-          // 日付が見つからない場合はスキップ
-          if (!formattedDate) continue;
-          
-          // 取引先を探す（日付の次の列から）
-          let merchant = '';
-          let merchantIndex = dateIndex + 1;
-          
-          // 取引先が空の場合は次の列を確認
-          while (merchantIndex < row.length && (!row[merchantIndex] || row[merchantIndex].trim() === '')) {
-            merchantIndex++;
+          // 日付が見つからない場合は、前の行の日付を使用
+          if (!formattedDate) {
+            if (lastDate) {
+              formattedDate = lastDate;
+              dateIndex = -1; // 日付列が見つからない
+            } else {
+              continue; // 日付も前の行の日付もない場合はスキップ
+            }
           }
           
-          if (merchantIndex < row.length) {
-            merchant = row[merchantIndex].trim();
+          // 取引先を探す（日付の次の列から、または1列目から）
+          let merchant = '';
+          let merchantStartIndex = dateIndex >= 0 ? dateIndex + 1 : 0;
+          
+          // 取引先が空の場合は次の列を確認
+          while (merchantStartIndex < row.length && (!row[merchantStartIndex] || row[merchantStartIndex].trim() === '')) {
+            merchantStartIndex++;
+          }
+          
+          // 取引先が複数の列に分割されている可能性がある（カンマを含む場合）
+          // 金額が見つかるまでの列を結合
+          if (merchantStartIndex < row.length) {
+            const merchantParts: string[] = [];
+            let foundAmount = false;
+            
+            // 金額を探しながら、取引先の列を特定
+            for (let i = merchantStartIndex; i < row.length && !foundAmount; i++) {
+              const cell = row[i]?.trim() || '';
+              
+              // 金額の可能性をチェック
+              const extractedAmount = parseInt(cell.replace(/[^\d-]/g, ''), 10);
+              if (!isNaN(extractedAmount) && extractedAmount !== 0 && Math.abs(extractedAmount) > 100) {
+                // 金額らしい値が見つかった
+                foundAmount = true;
+                break;
+              }
+              
+              // 金額でない場合は取引先の一部として追加
+              if (cell && !cell.match(/^[�P-]+$/) && !cell.match(/^\d+$/)) {
+                merchantParts.push(cell);
+              }
+            }
+            
+            // 取引先を結合
+            merchant = merchantParts.join(' ').trim();
+            
+            // 取引先が見つからない場合は、最初の非空列を使用
+            if (!merchant && merchantStartIndex < row.length) {
+              merchant = row[merchantStartIndex].trim();
+            }
           }
           
           // 取引先が見つからない場合はスキップ
           if (!merchant) continue;
           
-          // 金額を探す（複数の列を確認: 3列目、5列目、6列目など）
+          // 金額を探す（複数の列を確認: 3列目、4列目、5列目、6列目、7列目など）
           let amount = 0;
           let amountFound = false;
           
-          // 金額の可能性がある列を順に確認
+          // 金額の可能性がある列を順に確認（より広範囲に）
           const amountCandidates = [
-            dateIndex + 2, // 通常の3列目
-            dateIndex + 4, // 5列目
-            dateIndex + 5, // 6列目
+            dateIndex >= 0 ? dateIndex + 2 : 2, // 通常の3列目
+            dateIndex >= 0 ? dateIndex + 3 : 3, // 4列目
+            dateIndex >= 0 ? dateIndex + 4 : 4, // 5列目
+            dateIndex >= 0 ? dateIndex + 5 : 5, // 6列目
+            dateIndex >= 0 ? dateIndex + 6 : 6, // 7列目
           ];
           
           for (const index of amountCandidates) {
