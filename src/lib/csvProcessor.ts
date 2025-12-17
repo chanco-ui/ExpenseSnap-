@@ -166,15 +166,15 @@ const parseCSVContent = (
               const extractedAmount = parseInt(amountStr.replace(/[^\d-]/g, ''), 10);
               
               if (!isNaN(extractedAmount) && extractedAmount !== 0) {
-                amount = Math.abs(extractedAmount); // 絶対値で保存
+                amount = extractedAmount; // 負の値もそのまま保持
                 amountFound = true;
                 break;
               }
             }
           }
           
-          // 金額が見つかった場合のみ追加
-          if (amountFound && amount > 0) {
+          // 金額が見つかった場合のみ追加（負の値も含む）
+          if (amountFound && amount !== 0) {
             transactions.push({
               date: formattedDate,
               merchant: merchant,
